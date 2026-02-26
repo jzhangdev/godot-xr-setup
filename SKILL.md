@@ -1,6 +1,6 @@
 ---
 name: godot-xr-setup
-description: Set up a Godot XR development environment.
+description: Set up and verify a Godot XR development environment, including preparing an XR demo project and installing/enabling OpenXR Vendors addon support. Use when the user asks to configure XR/OpenXR in Godot, install vendor OpenXR plugins, validate XR prerequisites, or troubleshoot XR setup issues.
 ---
 
 # Godot XR Setup
@@ -31,6 +31,9 @@ Use this skill when the user asks to:
 
 - Prefer the helper script for addon downloads:
   `scripts/download_openxr_vendors_addon.sh`
-- Keep Godot version and addon major version compatibility aligned.
+- If the helper script warns that the preferred plugin major is not available,
+  continue with the fallback tag it selected.
+- If you are not in the skill repository directory, run the helper script by
+  absolute path.
 - If the user is on macOS, include the `Privacy & Security` approval step for
   blocked plugin binaries.

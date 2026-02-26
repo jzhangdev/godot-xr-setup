@@ -29,7 +29,7 @@ extract_semver() {
   printf '%s\n' "$raw" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1 || true
 }
 
-resolve_plugin_major() {
+resolve_plugin_major_preference() {
   local version="$1"
   local major minor
 
@@ -57,6 +57,16 @@ resolve_plugin_major() {
     echo "No supported OpenXR Vendors plugin for Godot $version (requires >= 4.2)." >&2
     return 1
   fi
+}
+
+latest_tag_from_list() {
+  local list="$1"
+  printf '%s\n' "$list" \
+    | sed '/^$/d' \
+    | awk '{orig=$0; clean=$0; sub(/^v/, "", clean); print clean "\t" orig}' \
+    | sort -V \
+    | tail -n1 \
+    | cut -f2
 }
 
 while (($# > 0)); do
@@ -97,42 +107,49 @@ if [[ -z "$GODOT_VERSION" ]]; then
   fi
 fi
 
-PLUGIN_MAJOR="$(resolve_plugin_major "$GODOT_VERSION")"
+PREFERRED_PLUGIN_MAJOR="$(resolve_plugin_major_preference "$GODOT_VERSION")"
 
 if ! command -v git >/dev/null 2>&1; then
   echo "git command not found (required to query tags)." >&2
   exit 1
 fi
 
-mapfile -t TAGS < <(git ls-remote --tags --refs "$REPO_URL" | awk '{print $2}' | sed 's#refs/tags/##')
-if ((${#TAGS[@]} == 0)); then
+TAGS_RAW="$(git ls-remote --tags --refs "$REPO_URL" | awk '{print $2}' | sed 's#refs/tags/##')"
+if [[ -z "$TAGS_RAW" ]]; then
   echo "No release tags found for repository: $REPO_URL" >&2
   exit 1
 fi
 
-MATCHING_TAGS=()
-for tag in "${TAGS[@]}"; do
+STABLE_TAGS=""
+MATCHING_TAGS=""
+for tag in $TAGS_RAW; do
   clean="${tag#v}"
-  if [[ ! "$clean" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  if [[ ! "$clean" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-stable)?$ ]]; then
     continue
   fi
+  STABLE_TAGS+="${tag}"$'\n'
   tag_major="${clean%%.*}"
-  if [[ "$tag_major" == "$PLUGIN_MAJOR" ]]; then
-    MATCHING_TAGS+=("$tag")
+  if [[ "$tag_major" == "$PREFERRED_PLUGIN_MAJOR" ]]; then
+    MATCHING_TAGS+="${tag}"$'\n'
   fi
 done
 
-if ((${#MATCHING_TAGS[@]} == 0)); then
-  echo "No plugin tags found for major version $PLUGIN_MAJOR.x" >&2
+if [[ -z "$STABLE_TAGS" ]]; then
+  echo "No stable plugin tags found in repository: $REPO_URL" >&2
   exit 1
 fi
 
-LATEST_CLEAN="$(printf '%s\n' "${MATCHING_TAGS[@]}" | sed 's/^v//' | sort -V | tail -n1)"
-LATEST_TAG="$LATEST_CLEAN"
-if printf '%s\n' "${MATCHING_TAGS[@]}" | grep -qx "v${LATEST_CLEAN}"; then
-  LATEST_TAG="v${LATEST_CLEAN}"
+if [[ -n "$MATCHING_TAGS" ]]; then
+  LATEST_TAG="$(latest_tag_from_list "$MATCHING_TAGS")"
+  SELECTED_MAJOR="$PREFERRED_PLUGIN_MAJOR"
+else
+  LATEST_TAG="$(latest_tag_from_list "$STABLE_TAGS")"
+  SELECTED_MAJOR="${LATEST_TAG#v}"
+  SELECTED_MAJOR="${SELECTED_MAJOR%%.*}"
+  echo "Warning: no ${PREFERRED_PLUGIN_MAJOR}.x tag exists yet. Falling back to ${SELECTED_MAJOR}.x (${LATEST_TAG})." >&2
 fi
 
+LATEST_CLEAN="${LATEST_TAG#v}"
 DOWNLOAD_URL="${RELEASE_BASE_URL}/${LATEST_TAG}/${ASSET_NAME}"
 
 if [[ "$PRINT_URL_ONLY" == "true" ]]; then
@@ -144,7 +161,8 @@ mkdir -p "$OUTPUT_DIR"
 OUTPUT_FILE="${OUTPUT_DIR}/${ASSET_NAME%.zip}-${LATEST_CLEAN}.zip"
 
 echo "Godot version: $GODOT_VERSION"
-echo "Plugin major: ${PLUGIN_MAJOR}.x"
+echo "Preferred plugin major: ${PREFERRED_PLUGIN_MAJOR}.x"
+echo "Selected plugin major: ${SELECTED_MAJOR}.x"
 echo "Resolved tag: $LATEST_TAG"
 echo "Downloading: $DOWNLOAD_URL"
 echo "Output file: $OUTPUT_FILE"
