@@ -13,94 +13,120 @@ Install and enable the OpenXR Vendors plugin in a Godot project.
 
 ## Instructions
 
-1. Check the Godot version used by the project.
+Use the parts that match your workflow. The helper script is the quickest way to
+pick a compatible release, but manual download and manual project configuration
+are both valid.
 
-   ```bash
-   godot --version
-   ```
+### Check Godot Version
 
-2. Select a compatible plugin major version.
+```bash
+godot --version
+```
 
-   | Plugin major | Minimum Godot version |
-   | ------------ | --------------------- |
-   | 2.x          | 4.2                   |
-   | 3.x          | 4.3                   |
-   | 4.x          | 4.4                   |
-   | 5.x          | 4.6                   |
+If `godot` is not on PATH, use the version from the editor, your project
+documentation, or the specific binary you plan to run.
 
-   Note: if the preferred major is not released yet, the helper script falls back
-   to the latest available stable release and prints a warning.
+### Pick a Compatible Plugin Major
 
-3. Download the matching plugin release file with the helper script.
+| Plugin major | Minimum Godot version |
+| ------------ | --------------------- |
+| 2.x          | 4.2                   |
+| 3.x          | 4.3                   |
+| 4.x          | 4.4                   |
+| 5.x          | 4.6                   |
 
-   ```bash
-   SCRIPT_PATH="/path/to/godot-xr-setup/scripts/download_openxr_vendors_addon.sh"
-   chmod +x "$SCRIPT_PATH"
-   "$SCRIPT_PATH" --output-dir /tmp
-   ```
+If you use the helper script and the preferred major is not released yet, it
+falls back to the latest available stable release and prints a warning.
 
-   Optional:
-   - Pass an explicit version if `godot` is not on PATH:
-     `"$SCRIPT_PATH" --godot-version 4.4.1 --output-dir /tmp`
-   - Print resolved URL without downloading:
-     `"$SCRIPT_PATH" --godot-version 4.4.1 --print-url`
-   - Manual fallback release page:
-     `https://github.com/GodotVR/godot_openxr_vendors/releases`
+### Get the Addon Archive
 
-4. Install the addon into the Godot project.
+Use whichever download path fits your workflow.
 
-   ```bash
-   PLUGIN_ZIP="$(ls -1t /tmp/godotopenxrvendorsaddon-*.zip 2>/dev/null | head -n1)"
-   [ -n "$PLUGIN_ZIP" ] || { echo "No downloaded addon zip found in /tmp"; exit 1; }
-   TMP_DIR="$(mktemp -d)"
-   trap 'rm -rf "$TMP_DIR"' EXIT
-   unzip "$PLUGIN_ZIP" -d "$TMP_DIR"
-   ADDON_SRC="$TMP_DIR/godotopenxrvendors"
-   [ -d "$ADDON_SRC" ] || ADDON_SRC="$TMP_DIR/asset/addons/godotopenxrvendors"
-   [ -d "$ADDON_SRC" ] || { echo "Addon folder not found in archive layout"; exit 1; }
-   mkdir -p addons
-   cp -R "$ADDON_SRC" addons/
-   ```
+Helper script:
 
-5. Enable OpenXR via Godot CLI (headless script mode).
+```bash
+SCRIPT_PATH="/path/to/godot-xr-setup/scripts/download_openxr_vendors_addon.sh"
+chmod +x "$SCRIPT_PATH"
+"$SCRIPT_PATH" --output-dir /tmp
+```
 
-   Create `enable_openxr.gd` in the project root:
+Useful variants:
+- Pass an explicit version if `godot` is not on PATH:
+  `"$SCRIPT_PATH" --godot-version 4.4.1 --output-dir /tmp`
+- Print the resolved URL without downloading:
+  `"$SCRIPT_PATH" --godot-version 4.4.1 --print-url`
 
-   ```gdscript
-   extends SceneTree
+Manual download:
+`https://github.com/GodotVR/godot_openxr_vendors/releases`
 
-   func _init():
-       ProjectSettings.set_setting("xr/openxr/enabled", true)
-       ProjectSettings.set_setting("xr/openxr/auto_initialize", true)
+### Install the Addon into the Project
 
-       ProjectSettings.save()
+The important end state is that `addons/godotopenxrvendors` exists in the
+project root.
 
-       print("OpenXR enabled")
-       quit()
-   ```
+If you want a shell-based install flow, this works with the zip downloaded by
+the helper script:
 
-   Run it:
+```bash
+PLUGIN_ZIP="$(ls -1t /tmp/godotopenxrvendorsaddon-*.zip 2>/dev/null | head -n1)"
+[ -n "$PLUGIN_ZIP" ] || { echo "No downloaded addon zip found in /tmp"; exit 1; }
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+unzip "$PLUGIN_ZIP" -d "$TMP_DIR"
+ADDON_SRC="$TMP_DIR/godotopenxrvendors"
+[ -d "$ADDON_SRC" ] || ADDON_SRC="$TMP_DIR/asset/addons/godotopenxrvendors"
+[ -d "$ADDON_SRC" ] || { echo "Addon folder not found in archive layout"; exit 1; }
+mkdir -p addons
+cp -R "$ADDON_SRC" addons/
+```
 
-   ```bash
-   godot --headless --script enable_openxr.gd
-   ```
+You can also unpack the archive with a file manager or other tooling, as long as
+the addon ends up at `addons/godotopenxrvendors`.
 
-   This updates `project.godot` safely without manual editing.
-   After this step, remove the temporary helper script:
+### Enable OpenXR
 
-   ```bash
-   rm -f enable_openxr.gd
-   ```
+Editor path:
+- Open `Project Settings -> XR -> OpenXR`
+- Turn on `Enabled`
+- Turn on `Auto Initialize`
 
-6. Reload the project and handle the macOS security prompt if shown.
+CLI path:
+Use a temporary script if you prefer not to change the settings in the UI.
 
-   On macOS, go to `System Settings -> Privacy & Security` and allow the blocked
-   `libgodotopenxrvendors.macos` binary, then restart Godot.
+Create `enable_openxr.gd` in the project root:
 
-7. Install the Android Build Template.
+```gdscript
+extends SceneTree
 
-   In the Godot UI:
-   - `Project -> Install Android Build Template`
+func _init():
+    ProjectSettings.set_setting("xr/openxr/enabled", true)
+    ProjectSettings.set_setting("xr/openxr/auto_initialize", true)
+
+    ProjectSettings.save()
+
+    print("OpenXR enabled")
+    quit()
+```
+
+Run it:
+
+```bash
+godot --headless --script enable_openxr.gd
+```
+
+Then remove the temporary script if you do not want to keep it:
+
+```bash
+rm -f enable_openxr.gd
+```
+
+### Platform-Specific Follow-Up
+
+On macOS, you may need to go to `System Settings -> Privacy & Security` and
+allow the blocked `libgodotopenxrvendors.macos` binary, then restart Godot.
+
+If you are targeting Android, install the Android build template from:
+`Project -> Install Android Build Template`
 
 ## Verification
 
@@ -112,7 +138,7 @@ Install and enable the OpenXR Vendors plugin in a Godot project.
 
 - If the plugin does not appear, confirm the folder exists at:
   `addons/godotopenxrvendors`.
-- If step 4 fails, verify at least one file exists at:
+- If the shell-based install flow fails, verify at least one file exists at:
   `/tmp/godotopenxrvendorsaddon-*.zip`.
 - If OpenXR does not initialize, confirm both of these in `project.godot`:
   - `openxr/enabled=true`
