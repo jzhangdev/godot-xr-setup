@@ -22,10 +22,10 @@ Use this skill when the user asks to:
 
 ## Workflow
 
-1. Set up or validate the XR tools demo project:
-   - follow [SetupXRToolsDemo.md](./SetupXRToolsDemo.md)
-2. Install and enable OpenXR Vendors addon support:
-   - follow [SetupOpenXRVendorsPlugin.md](./SetupOpenXRVendorsPlugin.md)
+| Task | Guide |
+| --- | --- |
+| Set up or validate the XR tools demo project. | [SetupXRToolsDemo.md](./SetupXRToolsDemo.md) |
+| Install and enable OpenXR Vendors addon support. | [SetupOpenXRVendorsPlugin.md](./SetupOpenXRVendorsPlugin.md) |
 
 ## Notes
 
